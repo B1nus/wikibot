@@ -1,5 +1,7 @@
 # Exclude dataset
-dataset.txt
+dataset*
+temp*
+*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

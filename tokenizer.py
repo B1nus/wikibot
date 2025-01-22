@@ -21,11 +21,11 @@ class Tokenizer():
             split = self.merge(split, pair, idx)
             self.vocab[idx] = self.vocab[pair[0]] + self.vocab[pair[1]]
 
-    def encode(text):
+    def encode(self, text):
         split = Tokenizer.preprocess_string(text)
         while True:
             counts = Tokenizer.pair_counts(split)
-            pair = min(count, self.merges.get(float("inf")))
+            pair = min(counts, key=self.merges.get(float("inf")))
             if pair not in self.merges:
                 break
             else:
@@ -60,7 +60,7 @@ class Tokenizer():
         split = list(map(lambda x: list(map(int, x.encode("utf-8"))), split))
         return split
 
-    def decode(tokens):
+    def decode(self, tokens):
         text = b"".join([self.vocab[token] for token in tokens])
         return text.decode("utf-8", errors="replace")
 

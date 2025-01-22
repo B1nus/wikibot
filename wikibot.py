@@ -1,14 +1,21 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from tokenizer import Tokenizer
+import sys
 
 SEED = 1337
-CHARACTERS = 10000000
+DATASET_PATH = "dataset.txt"
+WIKIBOT_INFO_PATH = "wikibot.txt"
+MODEL_PATH = "wikibot.pkl"
+DATASET_OFFSET = 0
+DATASET_SIZE = 10_000_000
+VOCAB_SIZE = 1000
 BLOCK_SIZE = 128
 BATCH_SIZE = 16
-EVAL_INTERVAL = 500
+EVAL_INTERVAL = 100
 MAX_ITERS = 5000
-RESPONSE_LIMIT = 100
+RESPONSE_LIMIT = 128
 LEARNING_RATE = 3e-4
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 EVAL_ITERS = 200
@@ -16,21 +23,23 @@ N_EMBD = 384
 N_HEAD = 6
 N_LAYER = 6
 DROPOUT = 0.2
+TRAINING_SPLIT = 0.8
 
-with open('dataset.txt') as file:
-    with open('wikibot.txt') as wikibot_file:
-        text = file.read(CHARACTERS) + '\n\n' + wikibot_file.read()
-    vocab = list(set(text))
-VOCAB_SIZE = len(vocab)
+with open(DATASET_PATH) as file:
+    with open(WIKIBOT_INFO_PATH) as wikibot_file:
+        file.seek(DATASET_OFFSET)
+        text = file.read(DATASET_SIZE) + '\n\n' + wikibot_file.read()
 
-class BigramLanguageModel(nn.Module):
-    def __init__(self):
+# Bigram Language Model
+class Model(nn.Module):
+    def __init__(self, tokenizer):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(VOCAB_SIZE, N_EMBD)
+        self.token_embedding_table = nn.Embedding(len(tokenizer.vocab), N_EMBD)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD)
         self.blocks = nn.Sequential(*[Block(N_EMBD, n_head=N_HEAD) for _ in range(N_LAYER)])
         self.ln_f = nn.LayerNorm(N_EMBD)
-        self.lm_head = nn.Linear(N_EMBD, VOCAB_SIZE)
+        self.lm_head = nn.Linear(N_EMBD, len(tokenizer.vocab))
+        self.tokenizer = tokenizer
 
     def forward(self, idx, targets=None):
         B, T = idx.shape
@@ -61,6 +70,10 @@ class BigramLanguageModel(nn.Module):
             idx_next = torch.multinomial(probs, num_samples=1)
             idx = torch.cat((idx, idx_next), dim=1)
         return idx
+
+    def response(self, prompt):
+        context = torch.zeros((1, 1), dtype=torch.long, device=DEVICE)
+        return self.tokenizer.decode(self.generate(context, max_new_tokens=200)[0].tolist())
 
 class Block(nn.Module):
     def __init__(self, n_embd, n_head):
@@ -125,64 +138,74 @@ class MultiHeadAttention(nn.Module):
         out = self.dropout(out)
         return out
 
-stoi = {s:i for i, s in enumerate(vocab)}
-itos = {i:s for i, s in enumerate(vocab)}
-encode = lambda s: [stoi[c] for c in s]
-decode = lambda l: ''.join([itos[i] for i in l])
-
-data = torch.tensor(encode(text), dtype=torch.long)
-
-# Training/Validation split
-n = int(0.9*len(data))
-train_data = data[:n]
-val_data = data[n:]
-
-torch.manual_seed(SEED)
-
-def get_batch(split):
-    # generate a small batch of data of inputs x and targets y
-    data = train_data if split == 'train' else val_data
-    ix = torch.randint(len(data) - BLOCK_SIZE, (BATCH_SIZE,))
-    x = torch.stack([data[i:i+BLOCK_SIZE] for i in ix])
-    y = torch.stack([data[i+1:i+BLOCK_SIZE+1] for i in ix])
-    x, y = x.to(DEVICE), y.to(DEVICE)
-    return x, y
-
-@torch.no_grad()
-def estimate_loss():
-    out = {}
-    # model.eval()
-    for split in ['train', 'val']:
-        losses = torch.zeros(EVAL_ITERS)
-        for k in range(EVAL_ITERS):
-            X, Y = get_batch(split)
-            logits, loss = model(X,Y)
-            losses[k] = loss.item()
-        out[split] = losses.mean()
-    # model.train()
-    return out
-
-model = BigramLanguageModel()
-m = model.to(DEVICE)
-
-# Training
-optimizer = torch.optim.AdamW(m.parameters(), lr=LEARNING_RATE)
-for iter in range(MAX_ITERS):
-    if iter % EVAL_INTERVAL == 0:
-        losses = estimate_loss()
-        print(f"#{iter} train loss: {losses['train']:.4}, validation loss: {losses['val']:.4}")
-    xb, yb = get_batch('train')
-    logits,loss = m(xb, yb)
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
-
-def response(prompt):
-    context = torch.zeros((1, 1), dtype=torch.long, device=DEVICE)
-    return decode(m.generate(context, max_new_tokens=200)[0].tolist())
 
 if __name__ == "__main__":
-    print(response("A new user just started you. How do you respond?"))
+    if len(sys.argv) == 2 and sys.argv[1] == "train":
+        tokenizer = Tokenizer.load()
+        data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 
-    while True:
-        print(response(input("> ")))
+        # Training/Validation split
+        n = int(TRAINING_SPLIT*len(data))
+        train_data = data[:n]
+        val_data = data[n:]
+
+        torch.manual_seed(SEED)
+
+        def get_batch(split):
+            # generate a small batch of data of inputs x and targets y
+            data = train_data if split == 'train' else val_data
+            ix = torch.randint(len(data) - BLOCK_SIZE, (BATCH_SIZE,))
+            x = torch.stack([data[i:i+BLOCK_SIZE] for i in ix])
+            y = torch.stack([data[i+1:i+BLOCK_SIZE+1] for i in ix])
+            x, y = x.to(DEVICE), y.to(DEVICE)
+            return x, y
+
+        @torch.no_grad()
+        def estimate_loss():
+            out = {}
+            # model.eval()
+            for split in ['train', 'val']:
+                losses = torch.zeros(EVAL_ITERS)
+                for k in range(EVAL_ITERS):
+                    X, Y = get_batch(split)
+                    logits, loss = model(X,Y)
+                    losses[k] = loss.item()
+                out[split] = losses.mean()
+            # model.train()
+            return out
+
+        model = Model(tokenizer)
+        m = model.to(DEVICE)
+
+        # Training
+        optimizer = torch.optim.AdamW(m.parameters(), lr=LEARNING_RATE)
+        for iter in range(MAX_ITERS):
+            if iter % EVAL_INTERVAL == 0:
+                losses = estimate_loss()
+                print(f"#{iter} train loss: {losses['train']:.4}, validation loss: {losses['val']:.4}")
+                if iter > EVAL_INTERVAL:
+                    print("Saving model at ./temp-" + MODEL_PATH)
+                    torch.save(m.state_dict(), "temp-" + MODEL_PATH)
+            xb, yb = get_batch('train')
+            logits,loss = m(xb, yb)
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+
+        print("Saving model at ./" + MODEL_PATH)
+        torch.save(m.state_dict(), MODEL_PATH)
+    elif len(sys.argv) == 3 and sys.argv[1:] == ["train", "tokenizer"]:
+        tokenizer = Tokenizer()
+        tokenizer.train(text, VOCAB_SIZE)
+        tokenizer.save()
+    elif len(sys.argv) <= 2:
+        model = Model(Tokenizer.load())
+        if len(sys.argv) == 2:
+            model.load_state_dict(torch.load(sys.argv[1], weights_only=False))
+        else:
+            model.load_state_dict(torch.load(MODEL_PATH, weights_only=False))
+        m = model.to(DEVICE)
+        print(m.response("A new user just started you. How do you respond?"))
+
+        while True:
+            print(m.response(input("> ")))
