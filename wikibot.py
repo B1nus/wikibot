@@ -1,16 +1,16 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
-from tokenizer import Tokenizer
+import tiktoken
 import sys
 
 SEED = 1337
 DATASET_PATH = "dataset.txt"
 WIKIBOT_INFO_PATH = "wikibot.txt"
 MODEL_PATH = "wikibot.pkl"
+TIKTOKEN_MODEL = "gpt2"
 DATASET_OFFSET = 0
 DATASET_SIZE = 10_000_000
-VOCAB_SIZE = 1000
 BLOCK_SIZE = 128
 BATCH_SIZE = 16
 EVAL_INTERVAL = 100
@@ -34,11 +34,11 @@ with open(DATASET_PATH) as file:
 class Model(nn.Module):
     def __init__(self, tokenizer):
         super().__init__()
-        self.token_embedding_table = nn.Embedding(len(tokenizer.vocab), N_EMBD)
+        self.token_embedding_table = nn.Embedding(tokenizer.n_vocab, N_EMBD)
         self.position_embedding_table = nn.Embedding(BLOCK_SIZE, N_EMBD)
         self.blocks = nn.Sequential(*[Block(N_EMBD, n_head=N_HEAD) for _ in range(N_LAYER)])
         self.ln_f = nn.LayerNorm(N_EMBD)
-        self.lm_head = nn.Linear(N_EMBD, len(tokenizer.vocab))
+        self.lm_head = nn.Linear(N_EMBD, tokenizer.n_vocab)
         self.tokenizer = tokenizer
 
     def forward(self, idx, targets=None):
@@ -141,7 +141,7 @@ class MultiHeadAttention(nn.Module):
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "train":
-        tokenizer = Tokenizer.load()
+        tokenizer = tiktoken.get_encoding(TIKTOKEN_MODEL)
         data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
 
         # Training/Validation split
@@ -194,12 +194,8 @@ if __name__ == "__main__":
 
         print("Saving model at ./" + MODEL_PATH)
         torch.save(m.state_dict(), MODEL_PATH)
-    elif len(sys.argv) == 3 and sys.argv[1:] == ["train", "tokenizer"]:
-        tokenizer = Tokenizer()
-        tokenizer.train(text, VOCAB_SIZE)
-        tokenizer.save()
     elif len(sys.argv) <= 2:
-        model = Model(Tokenizer.load())
+        model = Model(tiktoken.get_encoding(TIKTOKEN_MODEL))
         if len(sys.argv) == 2:
             model.load_state_dict(torch.load(sys.argv[1], weights_only=False))
         else:
