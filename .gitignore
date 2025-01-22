@@ -2,6 +2,7 @@
 dataset*
 temp*
 *.pkl
+tokenized/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -2,33 +2,31 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import tiktoken
+import array
 import sys
+import os
+import gc
 
 SEED = 1337
 DATASET_PATH = "dataset.txt"
+TOKENIZED_DIR = "tokenized"
+TOKENIZED_CHUNK_SIZE = 2_000_000_000
 WIKIBOT_INFO_PATH = "wikibot.txt"
 MODEL_PATH = "wikibot.pkl"
-TIKTOKEN_MODEL = "gpt2"
-DATASET_OFFSET = 0
-DATASET_SIZE = 10_000_000
-BLOCK_SIZE = 128
-BATCH_SIZE = 16
-EVAL_INTERVAL = 100
-MAX_ITERS = 5000
-RESPONSE_LIMIT = 128
-LEARNING_RATE = 3e-4
+TIKTOKEN_ENCODING = "gpt2"
+BLOCK_SIZE = 256
+BATCH_SIZE = 8
+EVAL_INTERVAL = 250
+MAX_ITERS = 10000
+RESPONSE_LIMIT = 256
+LEARNING_RATE = 2e-4
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 EVAL_ITERS = 200
-N_EMBD = 384
-N_HEAD = 6
-N_LAYER = 6
+N_EMBD = 448
+N_HEAD = 7
+N_LAYER = 7
 DROPOUT = 0.2
 TRAINING_SPLIT = 0.8
-
-with open(DATASET_PATH) as file:
-    with open(WIKIBOT_INFO_PATH) as wikibot_file:
-        file.seek(DATASET_OFFSET)
-        text = file.read(DATASET_SIZE) + '\n\n' + wikibot_file.read()
 
 # Bigram Language Model
 class Model(nn.Module):
@@ -138,11 +136,14 @@ class MultiHeadAttention(nn.Module):
         out = self.dropout(out)
         return out
 
-
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "train":
-        tokenizer = tiktoken.get_encoding(TIKTOKEN_MODEL)
-        data = torch.tensor(tokenizer.encode(text), dtype=torch.long)
+        path = os.path.join(TOKENIZED_DIR, "1")
+        with open(path, 'rb') as token_file:
+            tokens = array.array('H')
+            tokens.fromfile(token_file, os.path.getsize(path) // 2)
+
+        data = torch.tensor(tokens, dtype=torch.long)
 
         # Training/Validation split
         n = int(TRAINING_SPLIT*len(data))
@@ -174,7 +175,7 @@ if __name__ == "__main__":
             # model.train()
             return out
 
-        model = Model(tokenizer)
+        model = Model(tiktoken.get_encoding(TIKTOKEN_ENCODING))
         m = model.to(DEVICE)
 
         # Training
@@ -194,8 +195,33 @@ if __name__ == "__main__":
 
         print("Saving model at ./" + MODEL_PATH)
         torch.save(m.state_dict(), MODEL_PATH)
+    elif len(sys.argv) == 2 and sys.argv[1] == "tokenize":
+        tokenizer = tiktoken.get_encoding(TIKTOKEN_ENCODING)
+        if not os.path.exists(TOKENIZED_DIR):
+            os.makedirs(TOKENIZED_DIR)
+        with open(DATASET_PATH, encoding="utf-8") as dataset_file:
+            i = 0
+            print(f"Tokenizing dataset in chunks of {TOKENIZED_CHUNK_SIZE:,} bytes")
+            while True:
+                print(f"Tokenizing chunk #{i}")
+                text = dataset_file.read(TOKENIZED_CHUNK_SIZE)
+                if not text:
+                    break
+                if i == 0:
+                    with open(WIKIBOT_INFO_PATH, encoding="utf-8") as wikibot_file:
+                        text = wikibot_file.read() + "\n\n" + text
+                data = tokenizer.encode(text)
+                tokenized_path = os.path.join(TOKENIZED_DIR, str(i))
+                with open(tokenized_path, 'wb') as file:
+                    print(f"Saving ./{tokenized_path}")
+                    array.array('H', data).tofile(file)
+
+                del data, text
+                gc.collect()
+
+                i += 1
     elif len(sys.argv) <= 2:
-        model = Model(tiktoken.get_encoding(TIKTOKEN_MODEL))
+        model = Model(tiktoken.get_encoding(TIKTOKEN_ENCODING))
         if len(sys.argv) == 2:
             model.load_state_dict(torch.load(sys.argv[1], weights_only=False))
         else:
