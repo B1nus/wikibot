@@ -1,17 +1,12 @@
 # Usage
 ```
 $ python wikibot.py
+Hello I am wikibot! Ask me anything.
+>
 ```
 Write your question. For example:
 ```
-Hello I am wikibot! Ask me anything.
 > What does the fox say?
-```
-## Available commands
-```
-$ python wikibot.py [model.pkl]     # Start wikibot using wikibot.pkl or [model.pkl]
-$ python wikibot.py train           # Train wikibot and store it in ./wikibot.pkl
-$ python wikibot.py train tokenizer # Train the tokenizer and store it in tokenizer.pkl
 ```
 
 # Goals
@@ -28,6 +23,7 @@ $ python wikibot.py train tokenizer # Train the tokenizer and store it in tokeni
 - [llm from scratch](https://m.youtube.com/watch?v=kCc8FmEb1nY&pp=ygUWYnVpbGQgbGxtIGZyb20gc2NyYXRjaA%3D%3D)
 - [tokenization](https://www.youtube.com/watch?v=zduSFxRajkE)
 - [gpt 2 from scratch](https://m.youtube.com/watch?v=l8pRSuU81PU)
+- [let's reproduce gpt-2](https://www.youtube.com/watch?v=l8pRSuU81PU)
 
 # Future plans
 - Voice output
