@@ -18,6 +18,8 @@ Write your question. For example:
 - How to handle the large dataset
 - How to make it understand the situation it's in so it gives good responses
 
+To get it to learn wikipedia it might be necessay to have multiple versions of wikipedia written in different wordings by an llm.
+
 # Resources
 - [wikipedia dataset](https://github.com/GermanT5/wikipedia2corpus)
 - [llm from scratch](https://m.youtube.com/watch?v=kCc8FmEb1nY&pp=ygUWYnVpbGQgbGxtIGZyb20gc2NyYXRjaA%3D%3D)
