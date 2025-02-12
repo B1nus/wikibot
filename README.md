@@ -14,6 +14,8 @@ Write your question. For example:
 - Correct responses
 
 # Hmmm
+- Because we have small context windows, removing the tokenizer would be possible and prefered
+- on-policy reinforcement learning sounds really cool
 - How to teach the wikibot about itself
 - How to handle the large dataset
 - How to make it understand the situation it's in so it gives good responses
