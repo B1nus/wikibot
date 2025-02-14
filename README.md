@@ -16,6 +16,7 @@ Write your question. For example:
 # Hmmm
 - Because we have small context windows, removing the tokenizer would be possible and prefered
 - on-policy reinforcement learning sounds really cool
+- Try a simple neural network without attention
 - the wikibot doesn't have to be smart, maybe I can train it locally?
 - How to teach the wikibot about itself
 - How to handle the large dataset
