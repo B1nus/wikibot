@@ -9,27 +9,24 @@ Write your question. For example:
 > What does the fox say?
 ```
 # MVP
-- Homemade zig matrices
-- REINFORCE
-- No self attention
-- No tokenizer
+- homemade zig matrices
+- cold start with supervised learning
+- no self attention
+- no tokenizer
 - 128 character context window
-- Get through entire dataset
+- get through entire dataset once
 
 # Goals
 - Take less space than the dataset (14 gb)
 - Correct responses
 
 # Hmmm
-- Because we have small context windows, removing the tokenizer would be possible and prefered
-- on-policy reinforcement learning sounds really cool
-- Try a simple neural network without attention
+- reinforcement learning to behave like a "chatbot", or should I say... wikibot.
 - the wikibot doesn't have to be smart, maybe I can train it locally?
-- How to teach the wikibot about itself
-- How to handle the large dataset
-- How to make it understand the situation it's in so it gives good responses
-
-To get it to learn wikipedia it might be necessay to have multiple versions of wikipedia written in different wordings by an llm.
+- how to teach the wikibot about itself
+- how to handle the large dataset
+- getting correct responses. maybe many slightly different wording of wikipedia would work?
+- learning while you are prompting it
 
 # Resources
 - [wikipedia dataset](https://github.com/GermanT5/wikipedia2corpus)
