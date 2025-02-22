@@ -8,6 +8,13 @@ Write your question. For example:
 ```
 > What does the fox say?
 ```
+# MVP
+- Homemade zig matrices
+- REINFORCE
+- No self attention
+- No tokenizer
+- 128 character context window
+- Get through entire dataset
 
 # Goals
 - Take less space than the dataset (14 gb)
