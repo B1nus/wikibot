@@ -36,6 +36,7 @@ Write your question. For example:
 - [let's reproduce gpt-2](https://www.youtube.com/watch?v=l8pRSuU81PU)
 - [find tuning llama](https://www.llama.com/docs/how-to-guides/fine-tuning/)
 - [llama2.c](https://github.com/karpathy/llama2.c/blob/master/run.c)
+- [memory](https://m.youtube.com/watch?v=piF6D6CQxUw)
 
 # Future plans
 - Voice output
