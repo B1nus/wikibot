@@ -37,6 +37,7 @@ Write your question. For example:
 - [find tuning llama](https://www.llama.com/docs/how-to-guides/fine-tuning/)
 - [llama2.c](https://github.com/karpathy/llama2.c/blob/master/run.c)
 - [memory](https://m.youtube.com/watch?v=piF6D6CQxUw)
+- [Reinforcement learning walkkthrough (the best I've found yet)](https://normaluhr.github.io/2025/02/07/grpo/)
 
 # Future plans
 - Voice output
