@@ -1,3 +1,4 @@
+Try embedding a knowledge base on a preexisting model.
 # Usage
 ```
 $ python wikibot.py
